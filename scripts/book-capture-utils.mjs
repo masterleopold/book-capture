@@ -61,6 +61,14 @@ function escapeShell(str) {
   return `'${str.replace(/'/g, "'\\''")}'`;
 }
 
+/**
+ * Sanitize a string for safe interpolation into Swift source code.
+ * Removes backslashes, double quotes, and non-ASCII control characters.
+ */
+export function sanitizeSwiftString(str) {
+  return str.replace(/[\\"]/g, '').replace(/[^\x20-\x7E\u00A0-\uFFFF]/g, '');
+}
+
 // ─── Screen Capture ──────────────────────────────────────────────────────
 
 /**

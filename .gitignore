@@ -2,3 +2,9 @@ scripts/node_modules/
 scripts/package-lock.json
 scripts/vision-ocr
 .DS_Store
+.env
+.env.*
+*.pem
+*.key
+.claude/book-capture.local.md
+book-captures/
