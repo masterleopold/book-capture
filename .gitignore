@@ -6,5 +6,5 @@ scripts/vision-ocr
 .env.*
 *.pem
 *.key
-.claude/book-capture.local.md
+.claude/
 book-captures/

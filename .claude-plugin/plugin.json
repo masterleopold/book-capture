@@ -5,21 +5,5 @@
   "author": {
     "name": "hacci"
   },
-  "keywords": ["book", "kindle", "apple-books", "ocr", "obsidian", "markdown", "pdf"],
-  "commands": {
-    "capture": "Full pipeline: platform selection → screenshot capture → OCR → structured Markdown",
-    "kindle": "Capture from Mac Kindle app → OCR → structured Markdown",
-    "books": "Capture from Apple Books app → OCR → structured Markdown",
-    "cloud": "Capture from Kindle Cloud Reader (browser) → OCR → structured Markdown",
-    "pdf": "Capture from PDF file → OCR → structured Markdown",
-    "ocr": "Run OCR on existing page captures (Vision + agent re-reading)",
-    "generate": "Generate structured Markdown from existing OCR text (requires raw_text.json)"
-  },
-  "agents": {
-    "ocr-reader": "Batch multimodal OCR for low-confidence pages (reads images via Read tool)",
-    "content-writer": "Generates thematic Markdown content from OCR text"
-  },
-  "skills": {
-    "book-capture": "Activates when user mentions capturing a book, Kindle screenshots, book OCR, or book-to-markdown conversion"
-  }
+  "keywords": ["book", "kindle", "apple-books", "ocr", "obsidian", "markdown", "pdf"]
 }
