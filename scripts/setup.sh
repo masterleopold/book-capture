@@ -15,10 +15,11 @@ if [[ "${1:-}" == "--check-only" ]]; then
   CHECK_ONLY=true
 fi
 
-# Check node_modules
-if [ ! -d node_modules ]; then
+# Check node_modules. Reinstall if missing or if package.json was updated
+# more recently than node_modules (e.g. a new dependency was added).
+if [ ! -d node_modules ] || [ package.json -nt node_modules ]; then
   if $CHECK_ONLY; then
-    echo "book-capture: npm dependencies not installed. Run: bash ${SCRIPT_DIR}/setup.sh" >&2
+    echo "book-capture: npm dependencies need install/update. Run: bash ${SCRIPT_DIR}/setup.sh" >&2
     exit 1
   fi
   echo "Installing npm dependencies..."
