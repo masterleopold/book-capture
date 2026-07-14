@@ -1,9 +1,10 @@
 /**
- * PDF Page Capture — Convert PDF pages to PNG images
+ * PDF Page Capture — Convert PDF pages to WebP page images
  *
- * Converts an image-based (scanned) PDF into individual page PNGs
- * using Poppler's pdftoppm. Output is compatible with the existing
- * OCR pipeline (extract-text.mjs expects page_NNN.png files).
+ * Converts an image-based (scanned) PDF into individual pages using Poppler's
+ * pdftoppm, then re-encodes them to the `page_NNN.webp` shape the rest of the
+ * pipeline reads. pdftoppm only speaks PNG, so the PNGs are an intermediate
+ * step here, not the output.
  *
  * Usage: node capture-pdf.mjs <pdf-path> <BookID> [--dpi 200] [--start-page 1] [--max-pages 500] [--force]
  *
@@ -153,8 +154,9 @@ async function main() {
   }
 
   // pdftoppm only emits PNG, so re-encode to WebP and drop the PNGs. Pages are
-  // stored as WebP everywhere (see writePageImage) — a PNG left here would be
-  // both ~4x larger and invisible to git, which ignores PNG in the vault.
+  // stored as WebP everywhere (see writePageImage); a PNG left behind here is
+  // roughly 4x the bytes for no gain, and at 300dpi a scanned book runs to tens
+  // of GB.
   const pngs = (await readdir(outputDir))
     .filter(f => /^page_\d+\.png$/.test(f))
     .sort();

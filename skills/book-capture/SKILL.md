@@ -1,12 +1,12 @@
 ---
 name: book-capture
-description: Capture book pages from Mac Kindle, Apple Books, Kindle Cloud Reader, or PDF files, then OCR and generate structured Obsidian Markdown. Activates when user mentions capturing a book, Kindle screenshots, Apple Books capture, book OCR, book-to-markdown conversion, or extracting text from book page images.
-version: 1.0.0
+description: Capture book pages from Mac Kindle, Apple Books, Kindle Cloud Reader, PDF files, or photos of a physical book, then OCR and generate structured Obsidian Markdown. Activates when user mentions capturing a book, Kindle screenshots, Apple Books capture, book OCR, book-to-markdown conversion, photographing a paper book, importing page photos, or extracting text from book page images.
+version: 1.1.0
 ---
 
 # Book Capture Skill
 
-This plugin captures book pages as screenshots, extracts text via OCR, and generates structured Obsidian Markdown documents organized by theme.
+This plugin captures book pages as images, extracts text via OCR, and generates structured Obsidian Markdown documents organized by theme. Pages are stored as WebP (2000px, q85) — a quarter of PNG's bytes, and OCR scores it the same or better.
 
 ## Available Commands
 
@@ -18,13 +18,14 @@ This plugin captures book pages as screenshots, extracts text via OCR, and gener
 | `/book-capture:books` | Apple Books | Capture from Apple Books app |
 | `/book-capture:cloud` | Kindle Cloud Reader | Capture via browser (Playwright) |
 | `/book-capture:pdf` | PDF file | Capture from scanned/image-based PDF |
+| `/book-capture:photos` | Photos | Import photos of a physical book's pages |
 
 ### Pipeline steps
 
 | Command | Purpose | When to use |
 |---------|---------|-------------|
 | `/book-capture:capture` | Full pipeline with platform selection | When source is not yet decided |
-| `/book-capture:ocr` | OCR only | Page screenshots already exist, need text extraction |
+| `/book-capture:ocr` | OCR only | Page images already exist, need text extraction |
 | `/book-capture:generate` | Markdown only | OCR text exists (`raw_text.json`), need structured docs |
 
 ## Platform Support
@@ -35,6 +36,9 @@ This plugin captures book pages as screenshots, extracts text via OCR, and gener
 | **Apple Books** | `books` | Apple Books app open with book, Accessibility permission |
 | **Kindle Cloud Reader** | `cloud` | Playwright browser, Amazon login |
 | **PDF** | `pdf` | Poppler installed (`brew install poppler`) |
+| **Photos** | `photos` | A folder of page photos (HEIC/JPEG), one per page |
+
+Photos are the one source where page order is not given to you. The importer decides it (capture time by default, `--order filename` otherwise) and renames to `page_NNN.webp`, so everything downstream behaves as it does for a captured book. Preview with `--dry-run` before OCR: a mis-ordered import scrambles the text subtly rather than failing loudly.
 
 ## Quick Start
 
