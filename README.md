@@ -23,6 +23,7 @@ The entire pipeline runs locally with no external API keys — OCR and content g
 | **Apple Books** | CGWindowList + screencapture + arrow keys | Apple Books purchases |
 | **Kindle Cloud Reader** | Playwright browser automation | When desktop app unavailable |
 | **PDF** | Poppler pdftoppm conversion | Scanned/image-based PDFs |
+| **Photos** | Ordered import of camera photos (HEIC/JPEG) | Physical books shot page by page |
 
 ## Installation
 
@@ -82,6 +83,7 @@ Or the plugin will auto-detect and prompt you on first use.
 | `/book-capture:books` | Apple Books | Capture from Apple Books app |
 | `/book-capture:cloud` | Kindle Cloud Reader | Capture via browser (Playwright) |
 | `/book-capture:pdf` | PDF file | Capture from scanned/image-based PDF |
+| `/book-capture:photos` | Photos | Import photos of a physical book's pages |
 
 ### Pipeline Steps
 
@@ -90,6 +92,12 @@ Or the plugin will auto-detect and prompt you on first use.
 | `/book-capture:capture` | Full pipeline with platform selection prompt |
 | `/book-capture:ocr` | OCR only on existing page captures |
 | `/book-capture:generate` | Markdown generation from existing OCR text |
+
+### Page Images
+
+Pages are stored as WebP (2000px, q85), not PNG. A retina screenshot is ~1.3MB of PNG; a large library of them runs to tens of GB. The same pages as WebP cost about a quarter of that, and OCR does not pay for it — on identical pages Vision scores the WebP the same or better, because downscaling smooths the screenshot's subpixel noise.
+
+Books captured before this change still OCR: PNG and JPEG are read wherever pages are read. To convert an existing library, run `scripts/compress-captures.mjs <captures-root>` — it is idempotent, and moves originals aside rather than deleting them.
 
 ## Quick Start
 
