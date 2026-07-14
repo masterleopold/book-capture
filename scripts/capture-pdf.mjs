@@ -14,7 +14,7 @@
 
 import { execFile } from 'child_process';
 import { promisify } from 'util';
-import { access, readdir } from 'fs/promises';
+import { access, readdir, unlink } from 'fs/promises';
 import path from 'path';
 import {
   ensureCapturesDir,
@@ -22,6 +22,9 @@ import {
   parseArgs,
   parseDpiArg,
   progress,
+  writePageImage,
+  PAGE_IMAGE_EXT,
+  PAGE_IMAGE_RE,
 } from './book-capture-utils.mjs';
 
 const execFileAsync = promisify(execFile);
@@ -149,9 +152,23 @@ async function main() {
     process.exit(1);
   }
 
-  // Count output files
-  const outputFiles = (await readdir(outputDir))
+  // pdftoppm only emits PNG, so re-encode to WebP and drop the PNGs. Pages are
+  // stored as WebP everywhere (see writePageImage) — a PNG left here would be
+  // both ~4x larger and invisible to git, which ignores PNG in the vault.
+  const pngs = (await readdir(outputDir))
     .filter(f => /^page_\d+\.png$/.test(f))
+    .sort();
+
+  console.log(`Encoding ${pngs.length} pages to WebP...`);
+  for (const png of pngs) {
+    const src = path.join(outputDir, png);
+    const dest = path.join(outputDir, png.replace(/\.png$/, `.${PAGE_IMAGE_EXT}`));
+    await writePageImage(src, dest);
+    await unlink(src);
+  }
+
+  const outputFiles = (await readdir(outputDir))
+    .filter(f => PAGE_IMAGE_RE.test(f))
     .sort();
 
   const elapsed = Math.floor((Date.now() - startTime) / 1000);
@@ -163,7 +180,7 @@ async function main() {
   console.log(`Output: ${outputDir}\n`);
 
   if (outputFiles.length === 0) {
-    console.error('Warning: No page_*.png files were created. Check the PDF and pdftoppm output.');
+    console.error('Warning: No page images were created. Check the PDF and pdftoppm output.');
     process.exit(1);
   }
 }

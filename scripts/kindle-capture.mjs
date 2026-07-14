@@ -16,7 +16,7 @@ import { mkdir, access, unlink } from 'fs/promises';
 import path from 'path';
 import os from 'os';
 
-import { parseArgs } from './book-capture-utils.mjs';
+import { parseArgs, pageImageName, writePageImage } from './book-capture-utils.mjs';
 
 // Region → Kindle Cloud Reader domain mapping
 const REGION_DOMAINS = {
@@ -125,11 +125,14 @@ async function main() {
 
   while (true) {
     pageNum++;
-    const filename = `page_${String(pageNum).padStart(3, '0')}.png`;
+    const filename = pageImageName(pageNum);
     const filepath = path.join(OUTPUT_DIR, filename);
 
-    const buffer = await page.screenshot({ path: filepath, fullPage: false });
-    const sizeKB = (buffer.length / 1024).toFixed(1);
+    // Screenshot to memory, then let writePageImage downscale and encode it —
+    // Playwright would otherwise write a ~1.3MB PNG straight to disk.
+    const buffer = await page.screenshot({ fullPage: false });
+    const bytes = await writePageImage(buffer, filepath);
+    const sizeKB = (bytes / 1024).toFixed(1);
 
     // Location-based stuck detection
     const loc = await getLocation(page);
@@ -150,7 +153,7 @@ async function main() {
       console.log(`\n🛑 Location unchanged for ${LOCATION_STUCK_THRESHOLD} pages — end of book.`);
       // Remove duplicate stuck pages
       for (let i = pageNum; i > pageNum - LOCATION_STUCK_THRESHOLD; i--) {
-        await unlink(path.join(OUTPUT_DIR, `page_${String(i).padStart(3, '0')}.png`)).catch(() => {});
+        await unlink(path.join(OUTPUT_DIR, pageImageName(i))).catch(() => {});
       }
       pageNum -= LOCATION_STUCK_THRESHOLD;
       break;

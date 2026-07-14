@@ -13,6 +13,7 @@ import { execFile, exec } from 'child_process';
 import { promisify } from 'util';
 import { access, mkdir, readFile } from 'fs/promises';
 import path from 'path';
+import sharp from 'sharp';
 
 const execFileAsync = promisify(execFile);
 const execAsync = promisify(exec);
@@ -20,6 +21,45 @@ const execAsync = promisify(exec);
 // Base directory for all capture scripts
 export const FILES_DIR = import.meta.dirname;
 export const CAPTURES_DIR = process.env.BOOK_CAPTURES_DIR || path.join(FILES_DIR, 'book-captures');
+
+// ─── Page Images ─────────────────────────────────────────────────────────
+//
+// Pages are stored as WebP, never PNG. A retina Kindle screenshot is ~1.3MB of
+// PNG at 3164px; 24k of them reached 31GB and filled the disk. Downscaling to
+// 2000px and encoding WebP q85 costs a quarter of the bytes while staying
+// legible to both Vision OCR (ImageIO decodes WebP) and the multimodal re-read
+// of low-confidence pages. Legible is the constraint here, not pixel-perfect:
+// these images exist to be read, and nothing in the vault links to them.
+export const PAGE_IMAGE_EXT = 'webp';
+
+// Accepts legacy PNG/JPG so books captured before the switch still OCR.
+export const PAGE_IMAGE_RE = /^page_\d+\.(webp|png|jpe?g)$/i;
+
+export const PAGE_MAX_DIM = 2000;
+const PAGE_QUALITY = 85;
+
+export function pageImageName(pageNum, ext = PAGE_IMAGE_EXT) {
+  return `page_${String(pageNum).padStart(3, '0')}.${ext}`;
+}
+
+/**
+ * Encode a page image (screenshot buffer, or a file — including a phone's HEIC)
+ * to a downscaled WebP. Returns bytes written.
+ *
+ * `.rotate()` with no argument applies the EXIF orientation and is load-bearing
+ * for camera photos: a phone writes the sensor's raw landscape pixels and tags
+ * them "rotate 90". Strip the tag without baking in the rotation and every page
+ * lands sideways, which OCR reads as nothing at all. Screenshots carry no EXIF,
+ * so it is a no-op for them.
+ */
+export async function writePageImage(input, outputPath, { maxDim = PAGE_MAX_DIM } = {}) {
+  const { size } = await sharp(input)
+    .rotate()
+    .resize({ width: maxDim, height: maxDim, fit: 'inside', withoutEnlargement: true })
+    .webp({ quality: PAGE_QUALITY })
+    .toFile(outputPath);
+  return size;
+}
 
 // ─── Filename Sanitization ───────────────────────────────────────────────
 
@@ -76,7 +116,17 @@ export function sanitizeSwiftString(str) {
  * Uses macOS screencapture with -l (window ID) and -x (silent).
  */
 export async function captureWindow(windowId, outputPath) {
-  await execFileAsync('screencapture', ['-l', String(windowId), '-x', outputPath]);
+  let lastErr;
+  for (let attempt = 1; attempt <= 3; attempt++) {
+    try {
+      await execFileAsync('screencapture', ['-l', String(windowId), '-x', outputPath]);
+      return;
+    } catch (err) {
+      lastErr = err;
+      if (attempt < 3) await new Promise(r => setTimeout(r, 1000));
+    }
+  }
+  throw lastErr;
 }
 
 /**

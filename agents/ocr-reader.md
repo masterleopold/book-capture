@@ -15,7 +15,7 @@ You are extracting text from book page screenshots. Your job is to read each ass
 ## Instructions
 
 1. For each assigned page image:
-   - Read the PNG file with the Read tool
+   - Read the page image (WebP; PNG for older books) with the Read tool
    - Transcribe ALL visible text exactly as written
    - Preserve paragraph breaks and structure
    - Note chapter boundaries with `[CHAPTER: <title>]`
