@@ -29,7 +29,7 @@ export const CAPTURES_DIR = process.env.BOOK_CAPTURES_DIR || path.join(FILES_DIR
 // 2000px and encoding WebP q85 costs a quarter of the bytes while staying
 // legible to both Vision OCR (ImageIO decodes WebP) and the multimodal re-read
 // of low-confidence pages. Legible is the constraint here, not pixel-perfect:
-// these images exist to be read, and nothing in the vault links to them.
+// these images exist to be OCR'd, and no note embeds them.
 export const PAGE_IMAGE_EXT = 'webp';
 
 // Accepts legacy PNG/JPG so books captured before the switch still OCR.

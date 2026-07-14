@@ -8,7 +8,7 @@ A Claude Code plugin that captures book pages as screenshots, extracts text via 
 
 ## What It Does
 
-1. **Captures** every page of a book as screenshots (Mac Kindle, Apple Books, Kindle Cloud Reader, or PDF)
+1. **Captures** every page of a book as images (Mac Kindle, Apple Books, Kindle Cloud Reader, PDF, or photos of a paper copy)
 2. **Extracts text** via macOS Vision OCR + Claude Code agents for low-confidence pages
 3. **Generates** 8-14 thematically organized Markdown files with rich formatting (tables, blockquotes, cross-references)
 4. **Creates** a hub file with frontmatter and wikilinks to all topic files
@@ -105,6 +105,12 @@ Books captured before this change still OCR: PNG and JPEG are read wherever page
 /book-capture:kindle B0883TQ3ZN
 ```
 
+For a paper book you have photographed:
+
+```
+/book-capture:photos ~/Pictures/my-book-photos MyBookID
+```
+
 Claude Code will:
 1. Ask for book title, author, category, and location
 2. Remind you to open the book in Kindle to the first page
@@ -122,6 +128,14 @@ Each platform uses macOS-native tools:
 - **screencapture** to capture individual window frames
 - **AppleScript** to control page navigation (Page Down for Kindle, arrow keys for Books)
 - **Duplicate detection** to auto-stop at end of book (3 consecutive identical pages)
+
+### Photo Import
+
+Photos of a paper book need two things the other sources give you for free, and both fail silently when they go wrong.
+
+**Orientation.** A phone stores the sensor's landscape pixels and tags them "rotate 90" rather than rotating them. Read that naively and every page is sideways — which Vision OCR returns as an *empty result*, not an error. The importer bakes the EXIF orientation in.
+
+**Order.** OCR and the content writer both assume `page_NNN` *is* the reading order. A photo folder only offers whatever the phone named the files, so the importer settles the order once and renames accordingly. Capture time is the default; `--order filename` exists because a re-shot page keeps its slot in the filename sequence but jumps to the end of the book in time order. Neither heuristic is always right, so `--dry-run` prints the whole mapping — a mis-ordered import scrambles the text subtly instead of failing loudly.
 
 ### OCR Pipeline
 
@@ -208,6 +222,9 @@ If no settings file exists, the plugin auto-detects Obsidian vaults by looking f
 | pdftoppm not found | `brew install poppler` |
 | PDF is encrypted | `qpdf --decrypt input.pdf output.pdf` |
 | npm packages not installed | Run `scripts/setup.sh` |
+| Photo pages come out sideways | Should not happen — EXIF orientation is baked in on import. If it does, the photos likely lack EXIF; rotate them upright before importing |
+| Photo pages OCR to nothing | Almost always a sideways page. Open one and look at it before suspecting the OCR |
+| Photo pages are in the wrong order | Re-import with `--order filename` (or `--order time`). Preview with `--dry-run` first |
 
 ## Architecture
 
@@ -216,11 +233,12 @@ book-capture/
   .claude-plugin/
     plugin.json           # Plugin manifest
     marketplace.json      # Marketplace metadata
-  commands/               # 7 slash commands
+  commands/               # 8 slash commands
     kindle.md             # /book-capture:kindle
     books.md              # /book-capture:books
     cloud.md              # /book-capture:cloud
     pdf.md                # /book-capture:pdf
+    photos.md             # /book-capture:photos
     capture.md            # /book-capture:capture (generic)
     ocr.md                # /book-capture:ocr
     generate.md           # /book-capture:generate
@@ -235,6 +253,8 @@ book-capture/
     capture-books-app.mjs
     kindle-capture.mjs    # Playwright Cloud Reader
     capture-pdf.mjs
+    import-photos.mjs     # Ordered import of page photos (HEIC/JPEG)
+    compress-captures.mjs # Migrate an existing PNG/JPG library to WebP
     extract-text.mjs      # Vision OCR
     generate-markdown.mjs # Direct API fallback
     book-capture-utils.mjs
