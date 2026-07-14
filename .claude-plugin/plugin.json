@@ -1,9 +1,9 @@
 {
   "name": "book-capture",
-  "version": "1.1.0",
-  "description": "Capture books from Mac Kindle, Apple Books, Kindle Cloud Reader, or PDF — then OCR and generate structured Obsidian Markdown",
+  "version": "1.2.0",
+  "description": "Capture books from Mac Kindle, Apple Books, Kindle Cloud Reader, PDF, or photos of a physical book — then OCR and generate structured Obsidian Markdown",
   "author": {
     "name": "hacci"
   },
-  "keywords": ["book", "kindle", "apple-books", "ocr", "obsidian", "markdown", "pdf"]
+  "keywords": ["book", "kindle", "apple-books", "ocr", "obsidian", "markdown", "pdf", "photos"]
 }

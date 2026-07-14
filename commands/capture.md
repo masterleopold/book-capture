@@ -63,7 +63,7 @@ If the user provides arguments like `kindle B0746JCN8B` or `pdf /path/to/book.pd
 ### Check for existing captures
 
 ```
-Glob: <CAPTURES_BASE>/<BookID>/page_*.png
+Glob: <CAPTURES_BASE>/<BookID>/page_*.{webp,png}
 ```
 
 If captures exist, ask the user: **Skip capture** (use existing) or **Re-capture** (fresh).
@@ -131,7 +131,7 @@ Dispatch 4-8 parallel agents (subagent_type: `book-capture:ocr-reader`), each ha
 ```
 Agent prompt:
   Book: "<BookTitle>"
-  Pages: page_XXX.png through page_YYY.png
+  Pages: page_XXX.webp through page_YYY.webp
   Directory: <OUTPUT_DIR>
   Output: /tmp/ocr_batch_<SESSION_ID>_NN.json
 ```

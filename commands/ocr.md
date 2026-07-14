@@ -6,7 +6,7 @@ description: "Run OCR on existing book page captures (Vision + agent re-reading)
 
 # OCR Text Extraction
 
-Run OCR on existing page captures. Requires `page_*.png` files to already exist in the captures directory.
+Run OCR on existing page captures. Requires `page_*` image files (WebP, or PNG for books captured before the WebP switch) to already exist in the captures directory.
 
 ## Setup
 
@@ -17,7 +17,7 @@ Run OCR on existing page captures. Requires `page_*.png` files to already exist 
 
 Verify captures exist:
 ```
-Glob: <OUTPUT_DIR>/page_*.png
+Glob: <OUTPUT_DIR>/page_*.{webp,png}
 ```
 
 If no captures found, tell the user to run `/book-capture:capture` first.

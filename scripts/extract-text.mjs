@@ -20,6 +20,7 @@ import {
   runVisionOCR,
   parseArgs,
   progress,
+  PAGE_IMAGE_RE,
 } from './book-capture-utils.mjs';
 
 // ─── Page Processing ─────────────────────────────────────────────────────
@@ -93,13 +94,13 @@ async function main() {
   // Ensure Vision OCR binary is compiled
   await ensureVisionOCR();
 
-  // Find all page images
+  // Find all page images (WebP now; PNG/JPG for books captured before the switch)
   const files = (await readdir(resolvedDir))
-    .filter(f => /^page_\d+\.png$/.test(f))
+    .filter(f => PAGE_IMAGE_RE.test(f))
     .sort();
 
   if (files.length === 0) {
-    console.error('No page_*.png files found in the directory.');
+    console.error('No page_* image files found in the directory.');
     process.exit(1);
   }
 
