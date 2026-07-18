@@ -17,11 +17,11 @@ import { unlink } from 'fs/promises';
 import path from 'path';
 import {
   activateApp,
-  captureWindow,
+  captureWindowImage,
   ensureCapturesDir,
   getWindowIdByOwner,
   imagesMatch,
-  pageFilename,
+  pageImageName,
   parseArgs,
   sanitizeFilename,
   sendKeystroke,
@@ -85,18 +85,18 @@ async function main() {
 
   while (pageNum < flags.maxPages) {
     pageNum++;
-    const filename = pageFilename(pageNum);
+    const filename = pageImageName(pageNum);
     const filepath = path.join(outputDir, filename);
 
-    // Capture the current window (retry once with fresh window ID)
+    // Capture the current window as WebP (retry once with fresh window ID)
     try {
-      await captureWindow(windowId, filepath);
+      await captureWindowImage(windowId, filepath);
     } catch {
       console.log('  ⟳ Window ID stale, refreshing...');
       await sleep(1000);
       windowId = await getWindowIdByOwner('Books', true);
       console.log(`  New Window ID: ${windowId}`);
-      await captureWindow(windowId, filepath);
+      await captureWindowImage(windowId, filepath);
     }
 
     // Check for end of book (duplicate page detection)
@@ -123,7 +123,7 @@ async function main() {
       console.log(`\n\u{1F6D1} ${DUPLICATE_THRESHOLD} identical pages detected \u2014 end of book.`);
       // Remove duplicate pages
       for (let i = pageNum; i > pageNum - DUPLICATE_THRESHOLD; i--) {
-        const dupPath = path.join(outputDir, pageFilename(i));
+        const dupPath = path.join(outputDir, pageImageName(i));
         await unlink(dupPath).catch(() => {});
       }
       pageNum -= DUPLICATE_THRESHOLD;

@@ -11,7 +11,9 @@
 
 import { execFile, exec } from 'child_process';
 import { promisify } from 'util';
-import { access, mkdir, readFile } from 'fs/promises';
+import { access, mkdir, readFile, unlink } from 'fs/promises';
+import { tmpdir } from 'os';
+import { randomUUID } from 'crypto';
 import path from 'path';
 import sharp from 'sharp';
 
@@ -127,6 +129,25 @@ export async function captureWindow(windowId, outputPath) {
     }
   }
   throw lastErr;
+}
+
+/**
+ * Capture a window straight to a downscaled WebP page image.
+ *
+ * screencapture cannot emit WebP (only png/jpg/tiff/…), so it writes a throwaway
+ * PNG to the temp dir which writePageImage re-encodes. WebP is not optional: the
+ * vault tracks only WebP page images under Books/files, so a page left as PNG here
+ * is never committed and never preserved — even a single-page excerpt must land as
+ * WebP. Returns bytes written.
+ */
+export async function captureWindowImage(windowId, outputPath) {
+  const tmpPng = path.join(tmpdir(), `book-capture-${process.pid}-${randomUUID()}.png`);
+  try {
+    await captureWindow(windowId, tmpPng);
+    return await writePageImage(tmpPng, outputPath);
+  } finally {
+    await unlink(tmpPng).catch(() => {});
+  }
 }
 
 /**
@@ -400,13 +421,6 @@ export async function ensureCapturesDir(bookId) {
   const dir = path.join(CAPTURES_DIR, sanitizeFilename(bookId));
   await mkdir(dir, { recursive: true });
   return dir;
-}
-
-/**
- * Generate a zero-padded page filename.
- */
-export function pageFilename(pageNum, ext = 'png') {
-  return `page_${String(pageNum).padStart(3, '0')}.${ext}`;
 }
 
 // ─── PDF Utilities ────────────────────────────────────────────────────────
