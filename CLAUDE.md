@@ -35,7 +35,7 @@ Scripts in `scripts/` require Node.js 20+ and: `playwright`, `sharp`, `run-apple
 
 ## Page images are WebP, never PNG
 
-Pages are written as `page_NNN.webp` at 2000px/q85 via `writePageImage` in `book-capture-utils.mjs`. Every producer goes through it: `kindle-capture.mjs` screenshots to memory rather than letting Playwright write a PNG, and `capture-pdf.mjs` re-encodes what `pdftoppm` emits (it only speaks PNG) and deletes the PNGs.
+Pages are written as `page_NNN.webp` at 2000px/q85 via `writePageImage` in `book-capture-utils.mjs`. Every producer goes through it: `kindle-capture.mjs` screenshots to memory rather than letting Playwright write a PNG, and `capture-pdf.mjs` re-encodes what `pdftoppm` emits (it only speaks PNG) and deletes the PNGs. The window-screenshot sources — `capture-kindle-mac.mjs` (Mac Kindle) and `capture-books-app.mjs` (Apple Books) — go through `captureWindowImage`, which exists because `screencapture` cannot emit WebP: it writes a throwaway PNG to the temp dir, `writePageImage` re-encodes it, and the temp file is removed. Skip this and those two sources leave `page_NNN.png`, which the vault gitignores under `Books/files` — so an entire capture, full book or single-page excerpt, is silently never preserved.
 
 This is not cosmetic. A retina Kindle screenshot is ~1.3MB of PNG at 3164px; 24k of them reached 31GB and filled the disk. The same pages as WebP are ~7.7GB. Accuracy does not pay for it — on identical pages Vision OCR scores the WebP the same or better (0.990 → 1.000 on the page this was measured against), because downscaling smooths the screenshot's subpixel noise. Both readers handle the format: `vision-ocr.swift` decodes it through ImageIO, and the `ocr-reader` agent's Read tool renders it.
 
