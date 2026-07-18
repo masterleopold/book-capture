@@ -15,12 +15,12 @@ import { unlink } from 'fs/promises';
 import path from 'path';
 import {
   activateApp,
-  captureWindow,
+  captureWindowImage,
   ensureCapturesDir,
   getWindowIdByOwner,
   getWindowBounds,
   imagesMatch,
-  pageFilename,
+  pageImageName,
   parseArgs,
   sendKeystroke,
   sleep,
@@ -107,11 +107,11 @@ async function main() {
 
   while (pageNum < flags.maxPages) {
     pageNum++;
-    const filename = pageFilename(pageNum);
+    const filename = pageImageName(pageNum);
     const filepath = path.join(outputDir, filename);
 
-    // Capture the current window
-    await captureWindow(windowId, filepath);
+    // Capture the current window as WebP
+    await captureWindowImage(windowId, filepath);
 
     // Check for end of book (duplicate page detection)
     if (lastPagePath) {
@@ -137,7 +137,7 @@ async function main() {
       console.log(`\n\u{1F6D1} ${DUPLICATE_THRESHOLD} identical pages detected \u2014 end of book.`);
       // Remove duplicate pages
       for (let i = pageNum; i > pageNum - DUPLICATE_THRESHOLD; i--) {
-        const dupPath = path.join(outputDir, pageFilename(i));
+        const dupPath = path.join(outputDir, pageImageName(i));
         await unlink(dupPath).catch(() => {});
       }
       pageNum -= DUPLICATE_THRESHOLD;
