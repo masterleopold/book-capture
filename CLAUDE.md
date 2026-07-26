@@ -1,50 +1,57 @@
-# Book Capture Plugin
+# CLAUDE.md
 
-Captures book pages from Mac Kindle, Apple Books, Kindle Cloud Reader, PDF files, or photos of a physical book, then extracts text via OCR and generates structured Obsidian Markdown documents organized by theme.
+This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
-## Commands
+A Claude Code plugin: captures book pages from Mac Kindle, Apple Books, Kindle Cloud Reader, PDF, or photos of a physical book, OCRs them, and generates thematic Obsidian Markdown. macOS only.
 
-- `/book-capture:capture` — Full pipeline: platform selection → screenshot capture → OCR → structured Markdown
-- `/book-capture:kindle` — Capture from Mac Kindle app (source pre-selected)
-- `/book-capture:books` — Capture from Apple Books app (source pre-selected)
-- `/book-capture:cloud` — Capture from Kindle Cloud Reader via browser (source pre-selected)
-- `/book-capture:pdf` — Capture from PDF file (source pre-selected)
-- `/book-capture:photos` — Import photos of a physical book's pages (phone camera, scanner app)
-- `/book-capture:ocr` — Run OCR on existing page captures (Vision + agent re-reading)
-- `/book-capture:generate` — Generate structured Markdown from existing OCR text
+## Reference
 
-## Agents
+- [README.md](README.md) — what it does, install, requirements, the eight `/book-capture:*` commands, output shape, settings fields, troubleshooting
+- [docs/architecture.md](docs/architecture.md) — layers, command/agent mechanics, stage file contracts, per-source capture details, known inconsistencies
+- [docs/page-images.md](docs/page-images.md) — why WebP, the migration script, photo orientation and ordering in full
+- [CONTRIBUTING.md](CONTRIBUTING.md) — fork/PR flow
 
-- `ocr-reader` — Batch multimodal OCR for low-confidence pages (reads images via Read tool)
-- `content-writer` — Generates thematic Markdown content from OCR text
+## Development
 
-## Settings
+No build, no tests, no CI. Verification is running the thing.
 
-Per-project settings stored in `.claude/book-capture.local.md` (YAML frontmatter). Auto-detected for Obsidian vaults.
+```bash
+bash scripts/setup.sh                  # npm install + compile vision-ocr + playwright chromium
+bash scripts/setup.sh --check-only     # exit 1 if deps missing; every command runs this first
+claude plugin validate ./              # manifest / frontmatter check
+claude --plugin-dir ./book-capture     # load this working copy and exercise the commands
+```
 
-## Dependencies
+Scripts are ESM `.mjs` run directly with `node`, and each prints its usage on bad args — the fastest loop for anything below the prompt layer:
 
-Scripts in `scripts/` require Node.js 20+ and: `playwright`, `sharp`, `run-applescript`. Run `scripts/setup.sh` to install. macOS Vision OCR requires Xcode Command Line Tools. PDF capture requires Poppler (`brew install poppler`).
+```bash
+node scripts/import-photos.mjs <photo-dir> --output-dir <dir> --dry-run
+node scripts/extract-text.mjs <captures-dir> --concurrency 5 --claude-threshold 0.6
+```
 
-## Architecture
+`ensureVisionOCR` only checks that `scripts/vision-ocr` exists, so **after editing `vision-ocr.swift`, `rm scripts/vision-ocr` or run `setup.sh`** — only setup.sh compares mtimes. A stale binary otherwise keeps serving the old OCR silently. That binary and `scripts/node_modules/` are gitignored.
 
-- **Commands** define the workflow steps as instructions for Claude Code
-- **Scripts** handle system-level tasks (screenshots, OCR, PDF conversion)
-- **Agents** perform AI-powered tasks (image reading, content generation) within Claude Code context — no external API keys required
-- Kindle Cloud Reader supports multiple regions via `--region` flag (jp, us, uk, de, fr, it, es, ca, au, in, br)
+macOS is load-bearing: `screencapture`, `osascript`, inline `swift`/`swiftc`, `mdls`. Poppler (`brew install poppler`) for PDF only.
 
-## Page images are WebP, never PNG
+## Conventions
 
-Pages are written as `page_NNN.webp` at 2000px/q85 via `writePageImage` in `book-capture-utils.mjs`. Every producer goes through it: `kindle-capture.mjs` screenshots to memory rather than letting Playwright write a PNG, and `capture-pdf.mjs` re-encodes what `pdftoppm` emits (it only speaks PNG) and deletes the PNGs. The window-screenshot sources — `capture-kindle-mac.mjs` (Mac Kindle) and `capture-books-app.mjs` (Apple Books) — go through `captureWindowImage`, which exists because `screencapture` cannot emit WebP: it writes a throwaway PNG to the temp dir, `writePageImage` re-encodes it, and the temp file is removed. Skip this and those two sources leave `page_NNN.png`, which the vault gitignores under `Books/files` — so an entire capture, full book or single-page excerpt, is silently never preserved.
+- **`commands/capture.md` is the canonical pipeline.** `kindle|books|cloud|pdf|photos.md` are thin wrappers over it ("follow capture.md with source = X") carrying only source-specific quirks — pipeline changes go in `capture.md`. `ocr.md` and `generate.md` restate their stages to run standalone and have drifted from it; reconcile toward `capture.md` ([details](docs/architecture.md#commands)).
+- **`scripts/book-capture-utils.mjs` is the only shared module.** Every other script imports it. New system-level helpers belong there, not duplicated.
+- **Use `${CLAUDE_PLUGIN_ROOT}` for every intra-plugin path in commands.** Never a relative path.
+- **Bump the version in all three places together**: `.claude-plugin/plugin.json`, `skills/book-capture/SKILL.md` frontmatter, and the README badge. They currently disagree.
+- Per-project settings live in `.claude/book-capture.local.md` (YAML frontmatter, auto-detected for Obsidian vaults). `.claude/` is gitignored, so it is always user-side; `templates/settings-template.md` is the documented shape.
 
-This is not cosmetic. A retina Kindle screenshot is ~1.3MB of PNG at 3164px; 24k of them reached 31GB and filled the disk. The same pages as WebP are ~7.7GB. Accuracy does not pay for it — on identical pages Vision OCR scores the WebP the same or better (0.990 → 1.000 on the page this was measured against), because downscaling smooths the screenshot's subpixel noise. Both readers handle the format: `vision-ocr.swift` decodes it through ImageIO, and the `ocr-reader` agent's Read tool renders it.
+## Pipeline contract
 
-`PAGE_IMAGE_RE` still accepts PNG/JPG so books captured before the switch keep working. To migrate one, run `compress-captures.mjs <captures-root>` — idempotent, and it moves originals aside rather than deleting them.
+```
+page_NNN.webp  →  raw_text.json  →  structured.json  →  NN_Theme.md + hub file
+   capture         extract-text        planning            content-writer
+```
 
-## Photos are a different problem from screenshots
+Each arrow is a file, which is why `/ocr` and `/generate` run standalone. `raw_text.json` is `{ pages: [{page, text, confidence, method}], stats }`; `method` distinguishes `vision` / `vision-low` / `failed` / `claude-vision`. `extract-text.mjs` resumes by skipping page numbers already present, so re-running it is safe — delete the file to force a full re-OCR.
 
-`import-photos.mjs` covers the physical-book case: a folder of camera photos, one per page. Two things make it more than a format conversion, and both are silent when they go wrong.
+## Two rules that fail silently
 
-**Orientation.** A phone writes the sensor's landscape pixels and tags them "rotate 90"; it does not rotate the pixels. Read such a file naively and the page is sideways, which Vision OCR returns as an empty result rather than an error. `writePageImage` calls `.rotate()` with no argument to bake the EXIF orientation in. Screenshots have no EXIF, so this costs them nothing.
+**Pages are WebP, never PNG.** Always write them through `writePageImage`; `screencapture` and `pdftoppm` cannot emit WebP, so those paths re-encode a throwaway PNG. A page left as PNG is gitignored by the vault under `Books/files` and is therefore never preserved — the whole capture vanishes without an error. Readers still *accept* legacy PNG/JPG via `PAGE_IMAGE_RE`; only writers are WebP-only. [Why, and how to migrate an old library →](docs/page-images.md)
 
-**Order.** Kindle and PDF hand you pages in reading order; a photo folder hands you whatever the phone named them. OCR and the content writer both assume `page_NNN` *is* the reading order, so import fixes the order once, at the door, and renames accordingly — after which nothing downstream needs to know the book was photographed. Default order is capture time; `--order filename` exists because a re-shot page keeps its slot in the filename sequence but jumps to the end of the book in time order. Neither heuristic is always right, which is why `--dry-run` prints the full `photo -> page_NNN` mapping: a mis-ordered import yields text that is subtly scrambled rather than obviously broken.
+**Photo imports decide page order at the door.** Everything downstream assumes `page_NNN` *is* the reading order, and a phone folder does not give you that (nor an upright image — EXIF orientation must be baked in, or OCR returns empty rather than failing). Run `import-photos.mjs --dry-run` and check the mapping first: a mis-ordered import scrambles the text subtly instead of crashing. [Ordering heuristics →](docs/page-images.md#order)
