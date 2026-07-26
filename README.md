@@ -263,6 +263,9 @@ book-capture/
     package.json
   templates/
     settings-template.md
+  docs/
+    architecture.md       # Layers, stage contracts, per-source capture details
+    page-images.md        # WebP rationale, migration, photo orientation/ordering
 ```
 
 ## License
